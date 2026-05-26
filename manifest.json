@@ -1,0 +1,21 @@
+{
+  "name": "启步器",
+  "short_name": "启步器",
+  "description": "帮你克服拖延症，轻松启动任务",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#FF8C42",
+  "background_color": "#FFF8F0",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

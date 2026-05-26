@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>启步器 — 干掉启动困难</title>
+<meta name="theme-color" content="#FF8C42">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="启步器">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  :root {
+    --yellow: #FFD700;
+    --orange: #FF8C42;
+    --warm-bg: #FFF8F0;
+    --card-bg: #FFFFFF;
+    --text: #3D2C2E;
+    --text-light: #7A6E6F;
+    --green: #4CAF50;
+    --accent: #FF6B6B;
+    --border: #F0E6DC;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #FFF8F0 0%, #FFF3E3 30%, #FFECD2 100%);
+    min-height: 100vh;
+    color: var(--text);
+  }
+  .app { max-width: 640px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  /* Header */
+  .header { text-align: center; padding: 32px 0 20px; }
+  .header .logo { font-size: 56px; animation: bounce 2s infinite; display: inline-block; }
+  @keyframes bounce {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  .header h1 {
+    font-size: 28px;
+    background: linear-gradient(135deg, #FF8C42, #FF6B6B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 8px 0 4px;
+  }
+  .header .subtitle { color: var(--text-light); font-size: 14px; }
+
+  /* Input area */
+  .input-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 24px rgba(255,140,66,0.1);
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+  }
+  .input-row { display: flex; gap: 10px; }
+  .input-row input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #FFFAF5;
+  }
+  .input-row input:focus { border-color: var(--orange); }
+
+  .btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary {
+    background: linear-gradient(135deg, #FF8C42, #FF6B6B);
+    color: white;
+    box-shadow: 0 4px 14px rgba(255,107,107,0.3);
+  }
+  .btn-primary:hover { box-shadow: 0 6px 20px rgba(255,107,107,0.4); transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-start {
+    background: linear-gradient(135deg, #4CAF50, #66BB6A);
+    color: white;
+    box-shadow: 0 3px 12px rgba(76,175,80,0.3);
+    min-width: 72px;
+  }
+  .btn-photo {
+    background: linear-gradient(135deg, #9C27B0, #E040FB);
+    color: white;
+    box-shadow: 0 3px 12px rgba(156,39,176,0.3);
+  }
+  .btn-confirm {
+    background: linear-gradient(135deg, #2196F3, #42A5F5);
+    color: white;
+    font-size: 18px;
+    padding: 14px 32px;
+    box-shadow: 0 4px 16px rgba(33,150,243,0.3);
+  }
+  .btn-small { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+  .btn-outline {
+    background: white; color: var(--orange); border: 2px solid var(--orange);
+  }
+  .btn-outline:hover { background: #FFF3E3; }
+  .btn-ghost {
+    background: transparent; color: var(--text-light); font-size: 13px;
+    padding: 6px 12px; border-radius: 8px;
+  }
+  .btn-ghost:hover { background: rgba(0,0,0,0.04); color: var(--accent); }
+
+  /* Icon buttons */
+  .icon-btn {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+    background: white; cursor: pointer; font-size: 14px; display: inline-flex;
+    align-items: center; justify-content: center; transition: all 0.15s;
+    flex-shrink: 0; line-height: 1;
+  }
+  .icon-btn:hover { background: #FFF3E3; border-color: var(--orange); }
+  .icon-btn.danger:hover { background: #FFF0F0; border-color: var(--accent); }
+
+  /* Active task banner */
+  .active-banner {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 14px; padding: 12px 18px; margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  }
+  .active-banner .task-label {
+    font-size: 14px; font-weight: 600; color: var(--orange);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    margin-right: 12px;
+  }
+
+  /* Countdown setting */
+  .countdown-setting {
+    display: flex; align-items: center; gap: 8px; margin-top: 12px;
+    font-size: 13px; color: var(--text-light);
+  }
+  .countdown-setting input {
+    width: 52px; padding: 4px 8px; border: 1px solid var(--border);
+    border-radius: 6px; text-align: center; font-size: 14px;
+  }
+
+  /* Subtask list */
+  .subtask-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .subtask-card {
+    background: var(--card-bg);
+    border-radius: 14px; padding: 16px 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    border: 1px solid var(--border);
+    transition: all 0.3s; position: relative; overflow: hidden;
+  }
+  .subtask-card.completed {
+    border-color: var(--green); background: #F1F8E9;
+  }
+  .subtask-card.completed::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(76,175,80,0.08) 100%);
+  }
+  .subtask-row { display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+  .subtask-index {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #FFF3E3; color: var(--orange);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; flex-shrink: 0;
+  }
+  .subtask-card.completed .subtask-index { background: var(--green); color: white; }
+  .subtask-name { flex: 1; font-size: 15px; font-weight: 500; min-width: 0; }
+  .subtask-card.completed .subtask-name { text-decoration: line-through; color: var(--text-light); }
+  .edit-input {
+    flex: 1; font-size: 15px; padding: 6px 10px; border: 2px solid var(--orange);
+    border-radius: 8px; outline: none; background: #FFFAF5; min-width: 0; font-family: inherit;
+  }
+  .subtask-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+  .check-icon { font-size: 24px; animation: popIn 0.4s ease-out; }
+  @keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    70% { transform: scale(1.3); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Add subtask row */
+  .add-subtask-card {
+    border: 2px dashed var(--border); border-radius: 14px;
+    padding: 14px 18px; background: transparent; transition: border-color 0.2s;
+  }
+  .add-subtask-card:hover { border-color: var(--orange); }
+  .add-subtask-row { display: flex; align-items: center; gap: 10px; }
+  .add-subtask-input {
+    flex: 1; padding: 10px 14px; border: 2px solid var(--border);
+    border-radius: 10px; font-size: 14px; outline: none; font-family: inherit; background: #FFFAF5;
+  }
+  .add-subtask-input:focus { border-color: var(--orange); }
+  .add-subtask-btn {
+    background: none; border: none; color: var(--text-light); font-size: 14px;
+    cursor: pointer; padding: 8px 12px; border-radius: 8px; transition: all 0.15s;
+    font-weight: 500; width: 100%; text-align: center;
+  }
+  .add-subtask-btn:hover { color: var(--orange); background: rgba(255,140,66,0.06); }
+
+  /* Energy bar */
+  .energy-section { margin: 24px 0 16px; }
+  .energy-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; color: var(--text-light); }
+  .energy-bar-outer { height: 12px; border-radius: 6px; background: #F0E6DC; overflow: hidden; }
+  .energy-bar-inner {
+    height: 100%; border-radius: 6px;
+    background: linear-gradient(90deg, #FFD700, #FF8C42, #FF6B6B);
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Flame / Celebration */
+  .flame-container {
+    text-align: center; font-size: 40px; margin-top: 8px;
+    animation: flameFlicker 0.3s infinite alternate;
+  }
+  @keyframes flameFlicker {
+    0% { transform: scale(1) rotate(-3deg); }
+    100% { transform: scale(1.1) rotate(3deg); }
+  }
+
+  /* Encouragement */
+  .encourage {
+    text-align: center; padding: 16px; font-size: 15px; font-weight: 600;
+    color: var(--orange); animation: fadeInUp 0.5s ease-out;
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block; width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3); border-top-color: white;
+    border-radius: 50%; animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Photo preview */
+  .photo-preview {
+    width: 60px; height: 60px; border-radius: 10px; object-fit: cover;
+    border: 2px solid var(--border); margin: 0 4px;
+  }
+  .file-input-hidden { display: none; }
+  .encourage-msg {
+    font-size: 13px; color: var(--orange); font-weight: 600;
+    margin-top: 6px; animation: fadeInUp 0.4s ease-out;
+  }
+
+  /* ============================================================
+   * 倒计时弹出层
+   * ============================================================ */
+  .overlay-backdrop {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    animation: overlayFadeIn 0.25s ease-out;
+  }
+  @keyframes overlayFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .overlay-circle-wrap {
+    position: relative; width: 200px; height: 200px;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
+  }
+  .overlay-circle-wrap svg { position: absolute; top: 0; left: 0; transform: rotate(-90deg); }
+  .overlay-number {
+    font-size: 6rem; font-weight: 800; color: white; line-height: 1;
+    animation: countPulse 0.45s ease-out;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.2);
+  }
+  @keyframes countPulse {
+    0%   { transform: scale(0.7); opacity: 0.4; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .overlay-subtitle { color: rgba(255,255,255,0.8); font-size: 16px; font-weight: 500; margin-bottom: 28px; }
+  .overlay-cancel-btn {
+    padding: 12px 36px; border: 2px solid rgba(255,255,255,0.5);
+    border-radius: 12px; background: rgba(255,255,255,0.1);
+    color: white; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  }
+  .overlay-cancel-btn:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.8); }
+
+  /* ============================================================
+   * 成就墙
+   * ============================================================ */
+  .achievement-wall {
+    margin-top: 32px; border-top: 2px solid var(--border); padding-top: 20px;
+  }
+  .achievement-header {
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; padding: 8px 0; user-select: none;
+    transition: opacity 0.15s;
+  }
+  .achievement-header:hover { opacity: 0.7; }
+  .achievement-header h3 { font-size: 16px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .achievement-header .arrow { font-size: 14px; transition: transform 0.25s; color: var(--text-light); }
+  .achievement-header .arrow.open { transform: rotate(180deg); }
+  .achievement-count { font-size: 13px; color: var(--text-light); font-weight: 400; }
+
+  .achievement-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .achievement-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; background: var(--card-bg);
+    border-radius: 10px; border: 1px solid var(--border);
+    animation: fadeInUp 0.3s ease-out;
+  }
+  .achievement-item .achi-name {
+    font-size: 14px; font-weight: 500; flex: 1; margin-right: 12px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .achievement-item .achi-date { font-size: 12px; color: var(--text-light); white-space: nowrap; }
+  .achievement-empty { text-align: center; padding: 24px; color: var(--text-light); font-size: 14px; }
+  .achievement-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+
+  /* Mobile */
+  @media (max-width: 480px) {
+    .overlay-circle-wrap { width: 160px; height: 160px; }
+    .overlay-number { font-size: 4.5rem; }
+    .subtask-row { flex-wrap: wrap; }
+    .subtask-actions { margin-left: auto; }
+    .header .logo { font-size: 42px; }
+    .header h1 { font-size: 24px; }
+    .active-banner { flex-direction: column; gap: 8px; align-items: stretch; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+const { createPortal } = ReactDOM;
+
+/* ============================================================
+ * localStorage 持久化
+ * ============================================================ */
+const HISTORY_KEY = 'qibuqi_history';
+const CURRENT_KEY = 'qibuqi_current';
+
+function loadHistory() {
+  try { const d = localStorage.getItem(HISTORY_KEY); return d ? JSON.parse(d) : []; }
+  catch { return []; }
+}
+function saveHistory(list) { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }
+
+function loadCurrent() {
+  try { const d = localStorage.getItem(CURRENT_KEY); return d ? JSON.parse(d) : null; }
+  catch { return null; }
+}
+function saveCurrent(data) { localStorage.setItem(CURRENT_KEY, JSON.stringify(data)); }
+function clearCurrent() { localStorage.removeItem(CURRENT_KEY); }
+
+/* ============================================================
+ * 🔌 API 接入点 1 — DeepSeek AI 任务拆解
+ * 模型: deepseek-chat | 温度: 0.7 | 失败时自动降级 fallback
+ * ⚠️ 安全提醒: API Key 硬编码在前端是不安全的。
+ *    生产环境应将请求通过自己的后端转发，避免密钥泄露。
+ * ============================================================ */
+const DEEPSEEK_API_KEY = 'sk-8f39849f79e0486d95f93211dd2c7733';
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+const DEEPSEEK_MODEL = 'deepseek-chat';
+
+const callRealAIToBreakdown = async (task) => {
+  const prompt = `你是一个任务拆解专家。请将用户的核心任务："${task}"，拆解为3-5个最小、可立即执行的具体步骤（每个步骤一句话，用动词开头）。请严格只返回一个JSON数组，不要包含任何其他解释文字或markdown格式。
+
+示例格式：["第一步：...", "第二步：..."]`;
+
+  const response = await fetch(DEEPSEEK_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: DEEPSEEK_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 800,
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`API 请求失败: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices[0].message.content;
+
+  // 尝试解析 AI 返回的 JSON（兼容被 markdown 包裹的情况）
+  let jsonStr = content.trim();
+  const match = jsonStr.match(/\[[\s\S]*\]/);
+  if (match) jsonStr = match[0];
+
+  const subtasks = JSON.parse(jsonStr);
+  if (!Array.isArray(subtasks)) throw new Error('返回格式不是数组');
+  return { subtasks };
+};
+
+// 降级方案：AI 不可用时使用关键词匹配
+const fallbackBreakdown = (task) => {
+  if (task.includes('报告') || task.includes('文档') || task.includes('写')) {
+    return { subtasks: [
+      '打开文档编辑器，新建空白文件',
+      '写下标题和3个要点大纲',
+      '填充第一部分内容（只写草稿，不追求完美）',
+      '通读一遍，标记需要修改的地方',
+    ]};
+  }
+  if (task.includes('健身') || task.includes('运动') || task.includes('跑步')) {
+    return { subtasks: [
+      '换上运动服和运动鞋',
+      '做2分钟热身拉伸',
+      '开始运动，只做5分钟就够',
+      '拉伸放松，记录今天的运动量',
+    ]};
+  }
+  if (task.includes('房间') || task.includes('打扫') || task.includes('整理') || task.includes('收拾')) {
+    return { subtasks: [
+      '把桌面杂物全部放进一个收纳盒',
+      '用抹布擦一遍所有平面',
+      '扫地或吸尘（只做地面）',
+      '把垃圾袋系好放到门口',
+    ]};
+  }
+  return { subtasks: [
+    `打开${task}相关的页面或工具`,
+    `用2分钟快速了解${task}的大致内容`,
+    `完成${task}的第一个最小步骤`,
+    `记录${task}的完成情况`,
+  ]};
+};
+
+// 统一入口：先调 AI，失败则降级
+const breakdownTask = async (task) => {
+  try {
+    return await callRealAIToBreakdown(task);
+  } catch (error) {
+    console.warn('AI 拆解失败，使用降级方案:', error.message);
+    return fallbackBreakdown(task);
+  }
+};
+
+/* ============================================================
+ * 🔌 API 接入点 2 — 真实图片识别/打卡验证
+ * ============================================================ */
+const uploadAndVerify = async (file) => {
+  await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
+  return { success: true, message: '打卡成功！📸' };
+};
+
+/* ============================================================
+ * 鼓励文案池
+ * ============================================================ */
+const encouragements = [
+  '🎯 迈出第一步就是胜利！',
+  '🔥 太棒了，你在战胜拖延！',
+  '⚡ 行动力正在充电中...',
+  '💪 每一个开始都值得庆祝！',
+  '🌟 你已经超越了昨天的自己！',
+  '🚀 启动即巅峰，继续冲！',
+  '👏 这一步做到了，后面更容易！',
+  '🎉 又干掉一个任务，了不起！',
+  '✨ 完美！启动困难的克星就是你！',
+  '🏆 进度条又涨了，能量满满！',
+];
+const randomEncourage = () => encouragements[Math.floor(Math.random() * encouragements.length)];
+
+/* ============================================================
+ * 日期格式化
+ * ============================================================ */
+function formatDate(isoStr) {
+  const d = new Date(isoStr);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/* ============================================================
+ * 倒计时弹出层 (Portal)
+ * ============================================================ */
+function CountdownOverlay({ totalSeconds, onComplete, onCancel }) {
+  const [count, setCount] = useState(totalSeconds);
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      setCount(prev => {
+        if (prev <= 1) { clearInterval(intervalRef.current); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(intervalRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (count === 0) {
+      const t = setTimeout(() => onComplete(), 300);
+      return () => clearTimeout(t);
+    }
+  }, [count, onComplete]);
+
+  const progress = count / totalSeconds;
+  const r = 90;
+  const circumference = 2 * Math.PI * r;
+  const dashOffset = circumference * (1 - progress);
+
+  return createPortal(
+    <div className="overlay-backdrop">
+      <div className="overlay-circle-wrap">
+        <svg width="200" height="200" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="5" />
+          <circle cx="100" cy="100" r={r} fill="none" stroke="rgba(255,255,255,0.85)"
+            strokeWidth="5" strokeDasharray={circumference}
+            strokeDashoffset={dashOffset} strokeLinecap="round"
+          />
+        </svg>
+        <span className="overlay-number" key={count}>{count}</span>
+      </div>
+      <p className="overlay-subtitle">⏳ 坚持一下，马上就开始！</p>
+      <button className="overlay-cancel-btn" onClick={onCancel}>取消</button>
+    </div>,
+    document.body
+  );
+}
+
+/* ============================================================
+ * 子任务卡片
+ * ============================================================ */
+function SubtaskCard({ subtask, index, defaultSeconds, onDone, onEdit, onDelete }) {
+  const [status, setStatus] = useState('idle');
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [encourageMsg, setEncourageMsg] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(subtask.name);
+  const fileInputRef = useRef(null);
+  const editInputRef = useRef(null);
+
+  const handleStart = () => {
+    setShowOverlay(true);
+    setEncourageMsg('');
+    setPhotoUrl(null); setPhotoFile(null);
+  };
+  const handleOverlayComplete = useCallback(() => {
+    setShowOverlay(false); setStatus('awaitingPhoto');
+  }, []);
+  const handleOverlayCancel = useCallback(() => {
+    setShowOverlay(false); setStatus('idle');
+  }, []);
+
+  const handlePhotoClick = () => fileInputRef.current?.click();
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoUrl(URL.createObjectURL(file));
+    setStatus('awaitingConfirm');
+    setEncourageMsg('照片收到啦！确认一下就完成咯 👇');
+  };
+  const handleConfirm = async () => {
+    if (photoFile) {
+      const result = await uploadAndVerify(photoFile);
+      console.log('验证结果:', result);
+    }
+    setStatus('done');
+    setEncourageMsg(randomEncourage());
+    onDone(subtask.id);
+  };
+
+  const handleEditStart = () => { setEditText(subtask.name); setIsEditing(true); setTimeout(() => editInputRef.current?.focus(), 50); };
+  const handleEditSave = () => {
+    const trimmed = editText.trim();
+    if (trimmed && trimmed !== subtask.name) onEdit(subtask.id, trimmed);
+    setIsEditing(false);
+  };
+  const handleEditKeyDown = (e) => {
+    if (e.key === 'Enter') handleEditSave();
+    if (e.key === 'Escape') setIsEditing(false);
+  };
+
+  return (
+    <>
+      {showOverlay && (
+        <CountdownOverlay totalSeconds={defaultSeconds} onComplete={handleOverlayComplete} onCancel={handleOverlayCancel} />
+      )}
+      <div className={`subtask-card ${status === 'done' ? 'completed' : ''}`}>
+        <div className="subtask-row">
+          <div className="subtask-index">{status === 'done' ? '✓' : index}</div>
+          {isEditing ? (
+            <>
+              <input ref={editInputRef} className="edit-input" value={editText}
+                onChange={e => setEditText(e.target.value)} onKeyDown={handleEditKeyDown} onBlur={handleEditSave} />
+              <button className="icon-btn" onClick={handleEditSave} title="保存">💾</button>
+            </>
+          ) : (
+            <>
+              <div className="subtask-name">{subtask.name}</div>
+              <div className="subtask-actions">
+                {!showOverlay && status !== 'awaitingConfirm' && status !== 'done' && (
+                  <>
+                    <button className="icon-btn" onClick={handleEditStart} title="编辑">✏️</button>
+                    <button className="icon-btn danger" onClick={() => onDelete(subtask.id)} title="删除">🗑️</button>
+                  </>
+                )}
+                {status === 'idle' && !showOverlay && (
+                  <button className="btn btn-start" onClick={handleStart}>🚀 启动</button>
+                )}
+                {showOverlay && (
+                  <span style={{ fontSize:13, color:'var(--text-light)', fontWeight:500 }}>⏳ 倒计时中...</span>
+                )}
+                {status === 'awaitingPhoto' && (
+                  <>
+                    <button className="btn btn-photo btn-small" onClick={handlePhotoClick}>📸 拍照打卡</button>
+                    <input ref={fileInputRef} type="file" accept="image/*" className="file-input-hidden" onChange={handleFileChange} />
+                  </>
+                )}
+                {status === 'awaitingConfirm' && (
+                  <>
+                    {photoUrl && <img src={photoUrl} className="photo-preview" alt="打卡照片" />}
+                    <button className="btn btn-confirm btn-small" onClick={handleConfirm}>✅ 确认完成</button>
+                  </>
+                )}
+                {status === 'done' && (
+                  <>
+                    <button className="icon-btn" onClick={handleEditStart} title="编辑">✏️</button>
+                    <button className="icon-btn danger" onClick={() => onDelete(subtask.id)} title="删除">🗑️</button>
+                    <span className="check-icon">✅</span>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {encourageMsg && <div className="encourage-msg">{encourageMsg}</div>}
+      </div>
+    </>
+  );
+}
+
+/* ============================================================
+ * 添加子任务行
+ * ============================================================ */
+function AddSubtaskRow({ onAdd }) {
+  const [isActive, setIsActive] = useState(false);
+  const [text, setText] = useState('');
+  const inputRef = useRef(null);
+
+  const handleActivate = () => { setIsActive(true); setTimeout(() => inputRef.current?.focus(), 50); };
+  const handleConfirm = () => { const t = text.trim(); if (t) onAdd(t); setText(''); setIsActive(false); };
+  const handleCancel = () => { setText(''); setIsActive(false); };
+  const handleKeyDown = (e) => { if (e.key === 'Enter') handleConfirm(); if (e.key === 'Escape') handleCancel(); };
+
+  if (!isActive) {
+    return <div className="add-subtask-card"><button className="add-subtask-btn" onClick={handleActivate}>＋ 添加子任务</button></div>;
+  }
+  return (
+    <div className="add-subtask-card">
+      <div className="add-subtask-row">
+        <input ref={inputRef} className="add-subtask-input" placeholder="输入新的子任务..." value={text}
+          onChange={e => setText(e.target.value)} onKeyDown={handleKeyDown} onBlur={handleCancel} />
+        <button className="btn btn-start btn-small" onClick={handleConfirm}>确认</button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+ * 成就墙
+ * ============================================================ */
+function AchievementWall({ history, onClear }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="achievement-wall">
+      <div className="achievement-header" onClick={() => setIsOpen(!isOpen)}>
+        <h3>
+          🏆 成就墙
+          <span className="achievement-count">{history.length > 0 ? `(${history.length})` : ''}</span>
+        </h3>
+        <span className={`arrow ${isOpen ? 'open' : ''}`}>▼</span>
+      </div>
+
+      {isOpen && (
+        <>
+          {history.length === 0 ? (
+            <div className="achievement-empty">
+              🌱 还没有完成记录<br/>完成一个大任务，这里就会出现你的成就！
+            </div>
+          ) : (
+            <>
+              <div className="achievement-list">
+                {history.slice(0, 10).map((entry, i) => (
+                  <div className="achievement-item" key={i}>
+                    <span className="achi-name">{entry.taskName}</span>
+                    <span className="achi-date">{formatDate(entry.completedAt)}</span>
+                  </div>
+                ))}
+              </div>
+              {history.length > 0 && (
+                <div className="achievement-actions">
+                  <button className="btn-ghost" onClick={(e) => { e.stopPropagation(); onClear(); }}>
+                    🗑️ 清空历史
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+ * 主 App
+ * ============================================================ */
+function App() {
+  // ---- 初始化：从 localStorage 恢复 ----
+  const saved = useRef(loadCurrent());
+  const initial = saved.current;
+
+  const [history, setHistory] = useState(() => loadHistory());
+  const [taskName, setTaskName] = useState(initial?.taskName || '');
+  const [task, setTask] = useState(initial?.taskName || '');
+  const [subtasks, setSubtasks] = useState(initial?.subtasks || []);
+  const [doneIds, setDoneIds] = useState(() => new Set(initial?.doneIds || []));
+  const [defaultSeconds, setDefaultSeconds] = useState(initial?.defaultSeconds || 8);
+  const [loading, setLoading] = useState(false);
+  const [mainEncourage, setMainEncourage] = useState('');
+
+  // 恢复 idCounter（找到最大 id + 1）
+  const idCounter = useRef(
+    initial?.subtasks?.reduce((max, s) => Math.max(max, s.id ?? 0), -1) + 1 || 0
+  );
+
+  // 如果上次已保存成就，避免重复写入
+  const achievementSaved = useRef(initial?.achievementSaved || false);
+
+  // ---- 派生状态 ----
+  const completedCount = doneIds.size;
+  const totalSubtasks = subtasks.length;
+  const progress = totalSubtasks > 0 ? Math.round((completedCount / totalSubtasks) * 100) : 0;
+  const showFlame = totalSubtasks > 0 && completedCount === totalSubtasks;
+  const hasActiveTask = taskName !== '' && subtasks.length > 0;
+
+  // ---- ref 用于 effect 中读取最新 history ----
+  const historyRef = useRef(history);
+  historyRef.current = history;
+
+  // ---- 自动保存当前进度（跳过首次渲染） ----
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (!taskName && subtasks.length === 0) { clearCurrent(); return; }
+    saveCurrent({
+      taskName, subtasks, doneIds: [...doneIds], defaultSeconds,
+      achievementSaved: achievementSaved.current,
+    });
+  }, [taskName, subtasks, doneIds, defaultSeconds]);
+
+  // ---- 全部完成时自动写入成就墙 ----
+  useEffect(() => {
+    if (showFlame && taskName && !achievementSaved.current) {
+      achievementSaved.current = true;
+      const newEntry = {
+        taskName,
+        completedAt: new Date().toISOString(),
+        subtaskCount: subtasks.length,
+      };
+      const newHistory = [newEntry, ...historyRef.current].slice(0, 50);
+      setHistory(newHistory);
+      saveHistory(newHistory);
+    }
+    // 当任务不再全部完成时，重置标记（用户可能删除了已完成任务又添加了新的）
+    if (!showFlame && achievementSaved.current) {
+      achievementSaved.current = false;
+    }
+  }, [showFlame, taskName, subtasks.length]);
+
+  // ---- 操作 ----
+  const handleBreakdown = async () => {
+    const name = task.trim();
+    if (!name) return;
+    setLoading(true);
+    setMainEncourage('');
+    setDoneIds(new Set());
+    achievementSaved.current = false;
+    setTaskName(name);
+
+    const result = await breakdownTask(name);
+    const newSubtasks = result.subtasks.map(name => ({ id: idCounter.current++, name }));
+    setSubtasks(newSubtasks);
+    setLoading(false);
+    setMainEncourage('✨ 任务已拆解！选一个最轻松的，点"启动"开始吧～');
+  };
+
+  const handleNewTask = () => {
+    setTaskName(''); setTask(''); setSubtasks([]); setDoneIds(new Set());
+    setMainEncourage('');
+    achievementSaved.current = false;
+    clearCurrent();
+  };
+
+  const handleDone = useCallback((id) => {
+    setDoneIds(prev => { const next = new Set(prev); next.add(id); return next; });
+  }, []);
+
+  const handleEdit = useCallback((id, newName) => {
+    setSubtasks(prev => prev.map(s => s.id === id ? { ...s, name: newName } : s));
+  }, []);
+
+  const handleDelete = useCallback((id) => {
+    setSubtasks(prev => prev.filter(s => s.id !== id));
+    setDoneIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+  }, []);
+
+  const handleAdd = useCallback((name) => {
+    setSubtasks(prev => [...prev, { id: idCounter.current++, name }]);
+  }, []);
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    saveHistory([]);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleBreakdown();
+  };
+
+  return (
+    <div className="app">
+      {/* Header */}
+      <div className="header">
+        <div className="logo">🚀</div>
+        <h1>启步器</h1>
+        <p className="subtitle">每次启动，都是一次胜利 ✨</p>
+      </div>
+
+      {/* Input Card */}
+      <div className="input-card">
+        <div className="input-row">
+          <input
+            type="text"
+            placeholder="输入你想做但一直拖延的事... 比如：写周报、整理房间"
+            value={task}
+            onChange={e => setTask(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <button className="btn btn-primary" onClick={handleBreakdown} disabled={loading || !task.trim()}>
+            {loading ? <span className="spinner" /> : '🤖 AI 拆解'}
+          </button>
+        </div>
+        <div className="countdown-setting">
+          ⏱️ 启动倒计时：
+          <input type="number" min="3" max="60" value={defaultSeconds}
+            onChange={e => setDefaultSeconds(Math.max(3, Math.min(60, Number(e.target.value) || 8)))} />
+          秒
+        </div>
+      </div>
+
+      {/* Active task banner */}
+      {hasActiveTask && (
+        <div className="active-banner">
+          <span className="task-label">📋 当前任务：{taskName}</span>
+          <button className="btn btn-outline btn-small" onClick={handleNewTask}>📝 新建任务</button>
+        </div>
+      )}
+
+      {/* Encouragement */}
+      {mainEncourage && <div className="encourage">{mainEncourage}</div>}
+
+      {/* Subtask List */}
+      {subtasks.length > 0 && (
+        <>
+          <div className="subtask-list">
+            {subtasks.map((s, i) => (
+              <SubtaskCard key={s.id} subtask={s} index={i + 1}
+                defaultSeconds={defaultSeconds} onDone={handleDone}
+                onEdit={handleEdit} onDelete={handleDelete} />
+            ))}
+            <AddSubtaskRow onAdd={handleAdd} />
+          </div>
+
+          <div className="energy-section">
+            <div className="energy-label">
+              <span>⚡ 能量进度</span>
+              <span>{completedCount}/{totalSubtasks} · {progress}%</span>
+            </div>
+            <div className="energy-bar-outer">
+              <div className="energy-bar-inner" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+
+          {showFlame && (
+            <div className="flame-container">
+              🔥🔥🔥
+              <div style={{ fontSize:18, fontWeight:700, color:'var(--orange)', marginTop:4 }}>
+                🎉 全部完成！你太厉害了！
+              </div>
+              <div style={{ fontSize:14, color:'var(--text-light)', marginTop:4 }}>
+                启动困难的魔咒，今天被你打破了！
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Empty State */}
+      {!loading && subtasks.length === 0 && !mainEncourage && (
+        <div style={{ textAlign:'center', padding:40, color:'var(--text-light)' }}>
+          <div style={{ fontSize:48, marginBottom:12 }}>📝</div>
+          <div>把大任务拆成小步骤，</div>
+          <div>每一步都变得容易开始～</div>
+        </div>
+      )}
+
+      {/* 成就墙 */}
+      <AchievementWall history={history} onClear={handleClearHistory} />
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+
+<!-- Service Worker 注册 -->
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(function(reg) {
+    console.log('SW registered:', reg.scope);
+  }).catch(function(err) {
+    console.log('SW registration failed:', err);
+  });
+}
+</script>
+</body>
+</html>
