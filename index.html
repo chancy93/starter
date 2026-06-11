@@ -278,7 +278,7 @@
     position: relative; width: 200px; height: 200px;
     display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
   }
-  .overlay-circle-wrap svg { position: absolute; top: 0; left: 0; transform: rotate(-90deg); }
+  .overlay-circle-wrap svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
   .overlay-number {
     font-size: 6rem; font-weight: 800; color: white; line-height: 1;
     animation: countPulse 0.45s ease-out;
@@ -361,8 +361,17 @@ function loadHistory() {
 function saveHistory(list) { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }
 
 function loadCurrent() {
-  try { const d = localStorage.getItem(CURRENT_KEY); return d ? JSON.parse(d) : null; }
-  catch { return null; }
+  try {
+    const d = localStorage.getItem(CURRENT_KEY);
+    if (!d) return null;
+    const data = JSON.parse(d);
+    // 迁移旧版本：旧默认值为 8，新版本改为 5
+    if (data.defaultSeconds === 8 && !data._migrated) {
+      data.defaultSeconds = 5;
+      data._migrated = true;
+    }
+    return data;
+  } catch { return null; }
 }
 function saveCurrent(data) { localStorage.setItem(CURRENT_KEY, JSON.stringify(data)); }
 function clearCurrent() { localStorage.removeItem(CURRENT_KEY); }
@@ -525,7 +534,7 @@ function CountdownOverlay({ totalSeconds, onComplete, onCancel }) {
   return createPortal(
     <div className="overlay-backdrop">
       <div className="overlay-circle-wrap">
-        <svg width="200" height="200" viewBox="0 0 200 200">
+        <svg viewBox="0 0 200 200">
           <circle cx="100" cy="100" r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="5" />
           <circle cx="100" cy="100" r={r} fill="none" stroke="rgba(255,255,255,0.85)"
             strokeWidth="5" strokeDasharray={circumference}
@@ -743,7 +752,8 @@ function App() {
   const [task, setTask] = useState(initial?.taskName || '');
   const [subtasks, setSubtasks] = useState(initial?.subtasks || []);
   const [doneIds, setDoneIds] = useState(() => new Set(initial?.doneIds || []));
-  const [defaultSeconds, setDefaultSeconds] = useState(initial?.defaultSeconds || 8);
+  const [defaultSeconds, setDefaultSeconds] = useState(initial?.defaultSeconds || 5);
+  const [secondsDisplay, setSecondsDisplay] = useState(String(initial?.defaultSeconds || 5));
   const [loading, setLoading] = useState(false);
   const [mainEncourage, setMainEncourage] = useState('');
 
@@ -774,6 +784,7 @@ function App() {
     saveCurrent({
       taskName, subtasks, doneIds: [...doneIds], defaultSeconds,
       achievementSaved: achievementSaved.current,
+      _migrated: true,
     });
   }, [taskName, subtasks, doneIds, defaultSeconds]);
 
@@ -871,8 +882,22 @@ function App() {
         </div>
         <div className="countdown-setting">
           ⏱️ 启动倒计时：
-          <input type="number" min="3" max="60" value={defaultSeconds}
-            onChange={e => setDefaultSeconds(Math.max(3, Math.min(60, Number(e.target.value) || 8)))} />
+          <input type="text" inputMode="numeric" pattern="[0-9]*"
+            value={secondsDisplay}
+            onChange={e => {
+              const raw = e.target.value;
+              if (raw === '' || /^\d{1,2}$/.test(raw)) setSecondsDisplay(raw);
+            }}
+            onBlur={() => {
+              const num = parseInt(secondsDisplay, 10);
+              if (secondsDisplay === '' || isNaN(num) || num < 3) {
+                setDefaultSeconds(5); setSecondsDisplay('5');
+              } else {
+                const clamped = Math.max(3, Math.min(60, num));
+                setDefaultSeconds(clamped); setSecondsDisplay(String(clamped));
+              }
+            }}
+            onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }} />
           秒
         </div>
       </div>
